@@ -56,8 +56,83 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Create a new bill (order)
+router.post('/', async (req, res) => {
+  const { userId, items, paymentMethod } = req.body;
 
+  console.log('🟡 Incoming request body:', req.body);
 
+  // Defensive checks
+  if (!userId || !items || !Array.isArray(items) || items.length === 0) {
+    console.log('❌ Invalid input: missing userId or items');
+    return res.status(400).json({ message: 'Invalid input: userId and items are required' });
+  }
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      console.log('❌ User not found');
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    let totalAmount = 0;
+
+    // Loop to calculate total amount
+    for (const itemObj of items) {
+      console.log('🧾 Processing item:', itemObj);
+
+      if (!itemObj.itemId || typeof itemObj.quantity !== 'number') {
+        console.log('❌ Invalid item data:', itemObj);
+        return res.status(400).json({ message: 'Invalid item structure' });
+      }
+
+      const item = await Item.findById(itemObj.itemId);
+      if (!item) {
+        console.log(`❌ Item not found for ID: ${itemObj.itemId}`);
+        return res.status(404).json({ message: `Item not found: ${itemObj.itemId}` });
+      }
+
+      totalAmount += item.price * itemObj.quantity;
+    }
+
+    totalAmount = Number(totalAmount.toFixed(2));
+    console.log('✅ Calculated totalAmount:', totalAmount);
+
+    if (paymentMethod === 'wallet' && user.walletBalance < totalAmount) {
+      return res.status(400).json({ message: 'Insufficient wallet balance' });
+    }
+
+    // Deduct from wallet if paymentMethod is wallet
+    if (paymentMethod === 'wallet') {
+      user.walletBalance -= totalAmount;
+      await user.save();
+    }
+
+    const billData = {
+      userId,
+      items,
+      totalAmount, // <--- This must be defined
+      paymentMethod,
+      paymentStatus: 'success',
+      billNumber: `BILL-${Date.now()}`,
+      time: new Date(),
+    };
+
+    console.log('📦 Bill data before saving:', billData);
+
+    const bill = new Bill(billData);
+    await bill.save(); // 👈 Failing here if totalAmount is undefined
+
+    // Push bill ID to user history
+    user.orderHistory.push(bill._id);
+    await user.save();
+
+    res.status(201).json({ message: 'Bill created successfully', bill });
+  } catch (err) {
+    console.error('❌ Caught error while creating bill:', err);
+    res.status(500).json({ error: 'Failed to create bill', details: err.message });
+  }
+});
 
 
 // 📜 Get a bill by bill ID

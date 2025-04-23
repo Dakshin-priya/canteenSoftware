@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { menuItems } from '../data/menuData';
+import axios from 'axios';
 import Category from './Category';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,19 +7,30 @@ const ItemMaster = ({ cart, setCart }) => {
   const [menu, setMenu] = useState({});
   const navigate = useNavigate();
 
+  // Fetch the menu from the backend
   useEffect(() => {
-    const currentTime = new Date();
-    const hours = currentTime.getHours();
-    const minutes = currentTime.getMinutes();
+    const fetchMenu = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/item');
+        const items = res.data;
 
-    if (hours < 10) setMenu(menuItems.morning);
-    else if (hours === 10 && minutes <= 30) setMenu(menuItems.break);
-    else if (hours >= 12 && hours < 14) setMenu({ ...menuItems.lunch, ...menuItems.break });
-    else if ((hours === 14 && minutes >= 40) || (hours === 15 && minutes <= 20)) setMenu(menuItems.break);
-    else if ((hours === 16 && minutes >= 40) || (hours === 17 && minutes <= 30)) setMenu(menuItems.break);
-    else setMenu(menuItems.morning);
+        // Group items by category
+        const categorizedMenu = items.reduce((acc, item) => {
+          if (!acc[item.category]) acc[item.category] = [];
+          acc[item.category].push(item);
+          return acc;
+        }, {});
+
+        setMenu(categorizedMenu);
+      } catch (err) {
+        console.error('Failed to fetch menu items:', err);
+      }
+    };
+
+    fetchMenu();
   }, []);
 
+  // Handle adding items to the cart
   const handleAdd = (item) => {
     setCart((prev) => ({
       ...prev,
@@ -27,6 +38,7 @@ const ItemMaster = ({ cart, setCart }) => {
     }));
   };
 
+  // Handle removing items from the cart
   const handleRemove = (item) => {
     setCart((prev) => {
       const quantity = (prev[item.name]?.quantity || 0) - 1;

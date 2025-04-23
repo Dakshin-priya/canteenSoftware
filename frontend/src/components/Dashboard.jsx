@@ -6,7 +6,7 @@ const Dashboard = ({ user, wallet }) => (
     <h2>Welcome {user?.rollNumber}</h2>
     <p>Wallet Balance: ₹{wallet}</p>
     <nav>
-      <Link to="/">Order Food</Link> | 
+      <Link to="/menu">Order Food</Link> | 
       <Link to="/cart">Cart</Link> | 
       <Link to="/payment">Payment</Link> | 
       <Link to="/topup">Top Up Wallet</Link> | 

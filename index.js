@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const app = express();
 const cors = require('cors');
 const port = 5000;
+const bodyParser = require('body-parser');
+const billsRoutes = require('./routes/bill');
 
 //Allow frontend to access backend
 app.use(cors({

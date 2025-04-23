@@ -52,6 +52,46 @@ router.post('/add-money', async (req, res) => {
   }
 });
 
+// Add money to a user's wallet (using username and password)
+router.post('/topup', async (req, res) => {
+  const { userId, amount } = req.body;
+
+  if (!userId || isNaN(amount)) {
+    return res.status(400).json({ error: 'Invalid userId or amount' });
+  }
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    user.walletBalance += parseFloat(amount);
+    await user.save();
+
+    res.json({ walletBalance: user.walletBalance });
+  } catch (err) {
+    console.error("Error during wallet top-up:", err); // Add this line
+    res.status(500).json({ error: 'Failed to top up wallet' });
+  }
+});
+
+// Route to update wallet balance
+router.put('/:userId/wallet', async (req, res) => {
+  const { userId } = req.params;
+  const { walletBalance } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    user.walletBalance = walletBalance;
+    await user.save();
+
+    res.status(200).json({ message: 'Wallet updated successfully', walletBalance: user.walletBalance });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // 📄 Get a user's wallet balance (using rollNumber)
 router.get('/:rollNumber/wallet', async (req, res) => {
   try {

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
-const PaymentOptions = ({ cart, wallet, setWallet, setCart }) => {
+const PaymentOptions = ({ cart, wallet, setWallet, setCart, user }) => {
   const [topUp, setTopUp] = useState('');
   const [showTopUp, setShowTopUp] = useState(false);
   const [showQR, setShowQR] = useState(false);
@@ -14,34 +15,69 @@ const PaymentOptions = ({ cart, wallet, setWallet, setCart }) => {
     0
   );
 
-  const handleWalletPayment = () => {
+  // Handle Wallet Payment
+  const handleWalletPayment = async () => {
     if (wallet >= total) {
-      setWallet(wallet - total);
-      saveAndNavigate('Wallet');
+      try {
+        // Update wallet balance in backend
+        const updatedWalletBalance = wallet - total;
+        await axios.put(`http://localhost:5000/users/${user._id}/wallet`, {
+          walletBalance: updatedWalletBalance,
+        });
+
+        // Update the wallet balance locally
+        setWallet(updatedWalletBalance);
+        saveAndNavigate('Wallet');
+      } catch (err) {
+        console.error('Failed to update wallet:', err);
+      }
     } else {
       setShowTopUp(true);
     }
   };
 
-  const handleTopUp = () => {
+  // Handle Top-Up Payment
+  const handleTopUp = async () => {
     const amount = parseFloat(topUp);
     if (!isNaN(amount) && amount > 0) {
-      setWallet(wallet + amount);
-      setTopUp('');
-      setShowTopUp(false);
+      try {
+        const updatedWalletBalance = wallet + amount;
+        await axios.put(`http://localhost:5000/users/${user._id}/wallet`, {
+          walletBalance: updatedWalletBalance,
+        });
+
+        setWallet(updatedWalletBalance);
+        setTopUp('');
+        setShowTopUp(false);
+      } catch (err) {
+        console.error('Failed to top up wallet:', err);
+      }
     }
   };
 
+  // Handle GPay Payment
   const handleGPay = () => {
     setShowQR(true);
   };
 
+  // Save the order and navigate to the bill page
   const saveAndNavigate = (method) => {
-    const history = JSON.parse(localStorage.getItem('orderHistory') || '[]');
-    history.push({ cart, total, method, date: new Date() });
-    localStorage.setItem('orderHistory', JSON.stringify(history));
-    setCart({});
-    navigate('/bill', { state: { cart, total } });
+    const orderDetails = {
+      cart,
+      total,
+      method,
+      date: new Date(),
+    };
+
+    axios
+      .post('http://localhost:5000/orders', orderDetails) // Save the order to the database
+      .then(() => {
+        setCart({});
+        navigate('/bill', { state: { cart, total } });
+      })
+      .catch((err) => {
+        console.error('Failed to save order:', err);
+      });
   };
 
   return (
