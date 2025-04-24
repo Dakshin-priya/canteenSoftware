@@ -44,7 +44,7 @@ const Cart = ({ cart }) => {
 
       {/* Proceed to Pay button, disabled if cart is empty */}
       <button
-        onClick={() => navigate('/payment')}
+        onClick={() => navigate('/payment', { state: { cart } })}
         className={`mt-6 w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 ${Object.keys(cart).length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
         disabled={Object.keys(cart).length === 0}
       >

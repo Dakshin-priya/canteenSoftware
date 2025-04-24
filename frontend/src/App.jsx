@@ -23,7 +23,8 @@ function App() {
   useEffect(() => {
     if (user) {
       axios
-        .get(`http://localhost:5000/users/${user._id}`)
+      .get(`http://localhost:5000/users/${user.rollNumber}/wallet`)
+
         .then(res => setWallet(res.data.walletBalance))
         .catch(err => console.error('Failed to fetch wallet:', err));
     }

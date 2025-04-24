@@ -7,7 +7,7 @@ const Item = require('../schema/item');
 const mongoose = require('mongoose');
 
 // 🧾 Generate a bill (internal use)
-router.post('/', async (req, res) => {
+router.post('/internalUse', async (req, res) => {
   const { userId, items, totalAmount } = req.body;
 
   // Validate userId and make sure it's a valid ObjectId
@@ -56,156 +56,127 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Create a new bill (order)
+// Create a new bill
 router.post('/', async (req, res) => {
   const { userId, items, paymentMethod } = req.body;
 
-  console.log('🟡 Incoming request body:', req.body);
+  console.log(' Incoming request body:', req.body);
+  console.log(" userId received:", userId);
 
   // Defensive checks
   if (!userId || !items || !Array.isArray(items) || items.length === 0) {
-    console.log('❌ Invalid input: missing userId or items');
+    console.log('Invalid input: missing userId or items');
     return res.status(400).json({ message: 'Invalid input: userId and items are required' });
   }
 
   try {
-    const user = await User.findById(userId);
+    // Fetch user using rollNumber
+    const user = await User.findOne({ rollNumber: userId });
+    console.log(" Found user:", user);
+
     if (!user) {
-      console.log('❌ User not found');
+      console.log('User not found in DB:', userId);
       return res.status(404).json({ message: 'User not found' });
     }
 
     let totalAmount = 0;
+    const billItems = [];
 
-    // Loop to calculate total amount
+    // Calculate totalAmount and prepare billItems
     for (const itemObj of items) {
-      console.log('🧾 Processing item:', itemObj);
+      console.log('Item input:', itemObj);
 
       if (!itemObj.itemId || typeof itemObj.quantity !== 'number') {
-        console.log('❌ Invalid item data:', itemObj);
+        console.log(' Invalid item structure:', itemObj);
         return res.status(400).json({ message: 'Invalid item structure' });
       }
 
-      const item = await Item.findById(itemObj.itemId);
+      // itemId is actually item name in your case
+      const item = await Item.findOne({ name: itemObj.itemId });
+
+      console.log(" Found item:", item);
+
       if (!item) {
-        console.log(`❌ Item not found for ID: ${itemObj.itemId}`);
+        console.log(` Item not found for input: ${itemObj.itemId}`);
         return res.status(404).json({ message: `Item not found: ${itemObj.itemId}` });
       }
 
-      totalAmount += item.price * itemObj.quantity;
+      const itemPrice = item.price;
+
+      if (isNaN(itemPrice) || itemPrice <= 0) {
+        console.log(` Invalid price for item: ${itemObj.itemId}`);
+        return res.status(400).json({ message: `Invalid price for item: ${itemObj.itemId}` });
+      }
+
+      const itemTotal = itemPrice * itemObj.quantity;
+      console.log(` Item price: ${itemPrice}, Quantity: ${itemObj.quantity}, Subtotal: ${itemTotal}`);
+
+      totalAmount += itemTotal;
+
+      billItems.push({
+        itemId: item._id, // ✅ Use ObjectId
+        quantity: itemObj.quantity,
+      });
     }
 
-    totalAmount = Number(totalAmount.toFixed(2));
-    console.log('✅ Calculated totalAmount:', totalAmount);
+    totalAmount = parseFloat(totalAmount.toFixed(2));
+    console.log(' Final calculated totalAmount:', totalAmount);
 
-    if (paymentMethod === 'wallet' && user.walletBalance < totalAmount) {
-      return res.status(400).json({ message: 'Insufficient wallet balance' });
+    if (isNaN(totalAmount) || totalAmount <= 0) {
+      console.log(' Invalid totalAmount:', totalAmount);
+      return res.status(400).json({ message: 'Failed to calculate valid totalAmount' });
     }
 
-    // Deduct from wallet if paymentMethod is wallet
+    // Handle wallet deduction
     if (paymentMethod === 'wallet') {
+      if (user.walletBalance < totalAmount) {
+        console.log(' Insufficient wallet balance');
+        return res.status(400).json({ message: 'Insufficient wallet balance' });
+      }
+
       user.walletBalance -= totalAmount;
       await user.save();
+      console.log(` Wallet balance after deduction: ${user.walletBalance}`);
     }
 
+    // Create the bill
     const billData = {
-      userId,
-      items,
-      totalAmount, // <--- This must be defined
+      userId: user._id,
+      items: billItems,
+      totalAmount,
       paymentMethod,
       paymentStatus: 'success',
       billNumber: `BILL-${Date.now()}`,
       time: new Date(),
     };
 
-    console.log('📦 Bill data before saving:', billData);
+    console.log(' Bill data before saving:', billData);
 
     const bill = new Bill(billData);
-    await bill.save(); // 👈 Failing here if totalAmount is undefined
+    await bill.save();
+    console.log(' Bill saved with ID:', bill._id);
 
-    // Push bill ID to user history
+    // Update user's order history
     user.orderHistory.push(bill._id);
     await user.save();
+    console.log(' User order history updated');
 
-    res.status(201).json({ message: 'Bill created successfully', bill });
+    res.status(201).json({
+      message: 'Bill created successfully',
+      bill: {
+        ...bill.toObject(),
+        totalAmount,
+      },
+    });
   } catch (err) {
-    console.error('❌ Caught error while creating bill:', err);
+    console.error(' Caught error while creating bill:', err);
     res.status(500).json({ error: 'Failed to create bill', details: err.message });
   }
 });
 
 
-// 📜 Get a bill by bill ID
-router.get('/:id', async (req, res) => {
-  try {
-    const bill = await Bill.findById(req.params.id).populate('items.itemId');
-    if (!bill) return res.status(404).json({ error: 'Bill not found' });
-    res.json(bill);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch bill' });
-  }
-});
 
-// 💸 Pay using wallet
-router.post('/pay/wallet', async (req, res) => {
-  const { userId, items, totalAmount } = req.body;
-  try {
-    // Ensure userId is valid
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ error: 'Invalid user ID' });
-    }
 
-    const user = await User.findById(new mongoose.Types.ObjectId(userId));
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    if (user.walletBalance < totalAmount) {
-      return res.status(400).json({ error: 'Insufficient wallet balance' });
-    }
-
-    user.walletBalance -= totalAmount;
-
-    const billItems = [];
-    for (const item of items) {
-      if (!mongoose.Types.ObjectId.isValid(item.itemId)) {
-        return res.status(400).json({ error: `Invalid item ID: ${item.itemId}` });
-      }
-
-      const itemDetail = await Item.findById(new mongoose.Types.ObjectId(item.itemId));
-      if (!itemDetail) {
-        return res.status(404).json({ error: `Item with ID ${item.itemId} not found` });
-      }
-
-      billItems.push({
-        itemId: item.itemId,
-        quantity: item.quantity,
-        name: itemDetail.name,
-        price: itemDetail.price
-      });
-    }
-
-    const bill = new Bill({
-      userId,
-      items: billItems,
-      totalAmount,
-      paymentMethod: 'wallet',
-      paymentStatus: 'success',
-      billNumber: `BILL-${Date.now()}`
-    });
-
-    await bill.save();
-
-    // Add to user's order history
-    user.orderHistory.push(bill._id);
-    await user.save();
-
-    res.status(201).json(bill);
-  } catch (err) {
-    console.error(err);
-    res.status(400).json({ error: 'Wallet payment failed', details: err.message });
-  }
-});
 
 // 💳 Pay using razorpay
 router.post('/pay/razorpay', async (req, res) => {

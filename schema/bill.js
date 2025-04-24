@@ -8,7 +8,7 @@ const BillSchema = new mongoose.Schema({
       quantity: { type: Number, required: true }
     }
   ],
-  totalAmount: { type: Number, required: true },
+  totalAmount: { type: Number, required: false },
   paymentMethod: { type: String, enum: ['wallet', 'razorpay'], required: true },
   paymentStatus: { type: String, enum: ['success', 'failed'], required: true },
   createdAt: { type: Date, default: Date.now },

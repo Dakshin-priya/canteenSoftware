@@ -12,6 +12,33 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Route to get the price of an item by its itemId
+router.get('/price/:itemId', async (req, res) => {
+  const { itemId } = req.params;
+  console.log('Request for item price with itemId:', itemId);
+
+  try {
+    // Ensure the itemId is valid
+    if (!itemId || typeof itemId !== 'string' || itemId.trim() === '') {
+      return res.status(400).json({ message: 'Invalid itemId' });
+    }
+
+    // Query the database for the item
+    const item = await Item.findOne({ itemId: itemId.trim() });
+    if (!item) {
+      console.log(`Item not found with itemId: ${itemId}`);
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    console.log('Item found:', item);
+    res.status(200).json({ price: item.price });
+  } catch (err) {
+    console.error('Error fetching item price:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
 // 🔍 Get all canteen items by category
 router.get('/category/:category', async (req, res) => {
   const category = req.params.category;  // Get category from the URL params

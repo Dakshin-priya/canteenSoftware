@@ -20,7 +20,13 @@ app.get('/', (req, res) => {
 });
 
 // ✅ Connect to MongoDB
+
+//atlas
+// mongoose.connect('mongodb+srv://dakshinpriya:dakshinpriya@cluster0.od3bx3j.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0',)
+
+// local
 mongoose.connect('mongodb://localhost:27017/canteen')
+
     .then(() => console.log("Connected to DB"))
     .catch(err => console.error("Database connection error:", err));
 

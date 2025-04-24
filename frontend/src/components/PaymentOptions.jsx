@@ -1,33 +1,48 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
-const PaymentOptions = ({ cart, wallet, setWallet, setCart, user }) => {
+const PaymentOptions = ({ wallet, setWallet, setCart, user }) => {
   const [topUp, setTopUp] = useState('');
   const [showTopUp, setShowTopUp] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showWallet, setShowWallet] = useState(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const cart = location.state?.cart || {}; // 🛒 Get cart from navigation state
+
+  // ✅ Optional: Log for debugging
+  console.log('Cart received in PaymentOptions:', cart);
 
   const total = Object.values(cart).reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
 
-  // Handle Wallet Payment
+  useEffect(() => {
+    const fetchWallet = async () => {
+      if (!user?.rollNumber) return;
+      try {
+        const res = await axios.get(`http://localhost:5000/users/${user.rollNumber}/wallet`);
+        setWallet(res.data.walletBalance);
+      } catch (err) {
+        console.error('Failed to fetch wallet:', err);
+      }
+    };
+    fetchWallet();
+  }, [user]);
+
   const handleWalletPayment = async () => {
     if (wallet >= total) {
       try {
-        // Update wallet balance in backend
         const updatedWalletBalance = wallet - total;
         await axios.put(`http://localhost:5000/users/${user._id}/wallet`, {
           walletBalance: updatedWalletBalance,
         });
 
-        // Update the wallet balance locally
         setWallet(updatedWalletBalance);
-        saveAndNavigate('Wallet');
+        saveAndNavigate('wallet');
       } catch (err) {
         console.error('Failed to update wallet:', err);
       }
@@ -36,7 +51,6 @@ const PaymentOptions = ({ cart, wallet, setWallet, setCart, user }) => {
     }
   };
 
-  // Handle Top-Up Payment
   const handleTopUp = async () => {
     const amount = parseFloat(topUp);
     if (!isNaN(amount) && amount > 0) {
@@ -55,29 +69,42 @@ const PaymentOptions = ({ cart, wallet, setWallet, setCart, user }) => {
     }
   };
 
-  // Handle GPay Payment
   const handleGPay = () => {
     setShowQR(true);
   };
 
-  // Save the order and navigate to the bill page
-  const saveAndNavigate = (method) => {
-    const orderDetails = {
-      cart,
-      total,
-      method,
-      date: new Date(),
-    };
+  const saveAndNavigate = async (paymentMethod) => {
+    const formattedItems = Object.entries(cart).map(([itemId, item]) => ({
+      itemId,
+      quantity: item.quantity,
+    }));
 
-    axios
-      .post('http://localhost:5000/orders', orderDetails) // Save the order to the database
-      .then(() => {
-        setCart({});
-        navigate('/bill', { state: { cart, total } });
-      })
-      .catch((err) => {
-        console.error('Failed to save order:', err);
+    try {
+      if (!user.rollNumber || user.rollNumber.toString().length < 10) {
+        console.error('Invalid user ID:', user.rollNumber);
+        throw new Error('Invalid user ID');
+      }
+
+      console.log("Request Payload:", {
+        userId: user.rollNumber,
+        items: formattedItems,
+        paymentMethod,
       });
+
+      const res = await axios.post('http://localhost:5000/bill', {
+        userId: user.rollNumber,
+        items: formattedItems,
+        paymentMethod,
+      });
+
+      setCart({});
+      navigate('/bill', { state: { bill: res.data.bill } });
+    } catch (err) {
+      console.error('Failed to save bill:', err);
+      if (err.response) {
+        console.error('Response details:', err.response);
+      }
+    }
   };
 
   return (
@@ -144,7 +171,7 @@ const PaymentOptions = ({ cart, wallet, setWallet, setCart, user }) => {
         <div className="mt-6 text-center">
           <h3 className="text-md font-semibold mb-2">Scan QR to Pay via GPay</h3>
           <img
-            src={`https://api.qrserver.com/v1/create-qr-code/?data=upi://pay?pa=your@upi&pn=CanteenApp&am=${total}&currency=INR&size=150x150}`}
+            src={`https://api.qrserver.com/v1/create-qr-code/?data=upi://pay?pa=your@upi&pn=CanteenApp&am=${total}&currency=INR&size=150x150`}
             alt="GPay QR Code"
             className="mx-auto"
           />
@@ -152,7 +179,7 @@ const PaymentOptions = ({ cart, wallet, setWallet, setCart, user }) => {
             Use any UPI app to complete payment
           </p>
           <button
-            onClick={() => saveAndNavigate('GPay')}
+            onClick={() => saveAndNavigate('gpay')}
             className="mt-4 bg-black text-white px-4 py-2 rounded"
           >
             I've Paid
