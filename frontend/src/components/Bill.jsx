@@ -5,7 +5,7 @@ import axios from 'axios';
 const Bill = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { billId } = location.state || {};
+  const { billId } = location.state || {}; // billId here is actually the billNumber
 
   const [bill, setBill] = useState(null);
 
@@ -49,12 +49,12 @@ const Bill = () => {
           </tr>
         </thead>
         <tbody>
-          {bill.items.map((item, index) => (
+          {bill.items.map((entry, index) => (
             <tr key={index}>
-              <td className="border px-2 py-1">{item.name}</td>
-              <td className="border px-2 py-1">{item.quantity}</td>
-              <td className="border px-2 py-1">₹{item.price}</td>
-              <td className="border px-2 py-1">₹{item.price * item.quantity}</td>
+              <td className="border px-2 py-1">{entry.itemId.name}</td>
+              <td className="border px-2 py-1">{entry.quantity}</td>
+              <td className="border px-2 py-1">₹{entry.itemId.price}</td>
+              <td className="border px-2 py-1">₹{entry.itemId.price * entry.quantity}</td>
             </tr>
           ))}
         </tbody>

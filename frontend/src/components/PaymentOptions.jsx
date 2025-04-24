@@ -80,7 +80,7 @@ const PaymentOptions = ({ wallet, setWallet, setCart, user }) => {
     }));
 
     try {
-      if (!user.rollNumber || user.rollNumber.toString().length < 10) {
+      if (!user.rollNumber || user.rollNumber.toString().length < 1) {
         console.error('Invalid user ID:', user.rollNumber);
         throw new Error('Invalid user ID');
       }
@@ -97,8 +97,8 @@ const PaymentOptions = ({ wallet, setWallet, setCart, user }) => {
         paymentMethod,
       });
 
-      setCart({});
-      navigate('/bill', { state: { bill: res.data.bill } });
+      setCart({}); // Clear cart after payment
+      navigate('/bill', { state: { billId: res.data.bill._id } }); // Pass billId to Bill page
     } catch (err) {
       console.error('Failed to save bill:', err);
       if (err.response) {

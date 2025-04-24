@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-
 const Dashboard = ({ user }) => {
   const [wallet, setWallet] = useState(0);
 
@@ -29,6 +28,7 @@ const Dashboard = ({ user }) => {
         <Link to="/payment">Payment</Link> | 
         <Link to="/topup">Top Up Wallet</Link> | 
         <Link to="/orders">Order History</Link>
+        
       </nav>
     </div>
   );

@@ -232,4 +232,31 @@ router.post('/pay/razorpay', async (req, res) => {
   }
 });
 
+// GET bill by ID
+
+router.get('/:billId', async (req, res) => {
+  const { billId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(billId)) {
+    return res.status(400).json({ message: 'Invalid billId format' });
+  }
+
+  try {
+    const bill = await Bill.findById(billId)
+      .populate('items.itemId')
+      .populate('userId', 'rollNumber');
+
+    if (!bill) {
+      return res.status(404).json({ message: 'Bill not found' });
+    }
+
+    res.json(bill);
+  } catch (err) {
+    console.error('❌ Failed to fetch bill:', err.message);
+    res.status(500).json({ message: 'Internal server error', error: err.message });
+  }
+});
+
+module.exports = router;
+
 module.exports = router;
