@@ -36,20 +36,14 @@ const PaymentOptions = ({ wallet, setWallet, setCart, user }) => {
   const handleWalletPayment = async () => {
     if (wallet >= total) {
       try {
-        const updatedWalletBalance = wallet - total;
-        await axios.put(`http://localhost:5000/users/${user._id}/wallet`, {
-          walletBalance: updatedWalletBalance,
-        });
-
-        setWallet(updatedWalletBalance);
-        saveAndNavigate('wallet');
+        saveAndNavigate('wallet'); // ✅ Let backend handle deduction
       } catch (err) {
-        console.error('Failed to update wallet:', err);
+        console.error('Failed to process wallet payment:', err);
       }
     } else {
       setShowTopUp(true);
     }
-  };
+  };  
 
   const handleTopUp = async () => {
     const amount = parseFloat(topUp);

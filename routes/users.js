@@ -4,7 +4,7 @@ const router = express.Router();
 const User = require('../schema/users');
 const Bill = require('../schema/bill');
 
-// POST /api/users/login
+// POST /users/login
 router.post('/login', async (req, res) => {
   const { rollNumber, password } = req.body;
   const user = await User.findOne({ rollNumber });
