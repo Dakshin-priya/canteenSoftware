@@ -37,4 +37,28 @@ A full-stack web application to manage canteen billing, payments (wallet + UPI),
 
 ```bash
 npm start
-**"By default, the backend runs on [http://localhost:5000](http://localhost:5000)."**
+```
+**By default, the backend runs on [http://localhost:5000](http://localhost:5000).**
+
+## 👨‍💻 Frontend Setup
+
+1. **Navigate to the frontend directory:**
+
+   ```bash
+   cd frontend
+2. **Install frontend dependencies:**
+   ```bash
+   npm install
+   npm install axios react-router-dom
+3. **Start the development server:**
+   ```bash
+   npm run dev 
+**By default, the frontend runs on http://localhost:5173.**
+
+## 📝 Notes
+- Make sure MongoDB is running locally or update your MongoDB Atlas URI in index.js.
+
+- Replace the UPI ID in the PaymentOptions component for QR generation with your own.
+
+## 📬 Feedback & Contributions
+- Feel free to fork the project, open issues, or submit pull requests!
