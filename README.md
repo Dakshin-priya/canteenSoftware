@@ -48,7 +48,6 @@ npm start
    cd frontend
 2. **Install frontend dependencies:**
    ```bash
-   npm install
    npm install axios react-router-dom
 3. **Start the development server:**
    ```bash
